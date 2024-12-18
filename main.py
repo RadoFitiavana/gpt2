@@ -1,4 +1,5 @@
-from transformers import GPT2Tokenizer, GPT2Config, GPT2LMHeadModel, Trainer, TrainingArguments, TextDataset, DataCollatorForLanguageModeling
+from transformers import (GPT2Tokenizer, GPT2Config, GPT2LMHeadModel, Trainer, 
+                          TrainingArguments, TextDataset, DataCollatorForLanguageModeling, TrainerCallback)
 import wandb
 
 # Initialize Weights & Biases
@@ -35,6 +36,19 @@ data_collator = DataCollatorForLanguageModeling(
     mlm=False  # Not using Masked Language Modeling
 )
 
+# Custom Callback for Console Logs
+class ConsoleLoggingCallback(TrainerCallback):
+    def on_epoch_begin(self, args, state, control, **kwargs):
+        print(f"\n\nEpoch {state.epoch + 1}/{args.num_train_epochs} starting...\n")
+        
+    def on_step_end(self, args, state, control, **kwargs):
+        if state.global_step % args.logging_steps == 0:
+            print(f"Step {state.global_step} - Loss: {state.log_history[-1]['loss']:.4f}")
+    
+    def on_epoch_end(self, args, state, control, **kwargs):
+        print(f"Epoch {state.epoch + 1} completed. Saving model...\n")
+        wandb.log({"epoch": state.epoch + 1, "training_loss": state.log_history[-1]["loss"]})
+
 # Step 6: Training Arguments
 training_args = TrainingArguments(
     output_dir=output_dir,
@@ -55,12 +69,13 @@ training_args = TrainingArguments(
     warmup_steps=500
 )
 
-# Step 7: Trainer Initialization
+# Step 7: Trainer Initialization with Custom Console Logging Callback
 trainer = Trainer(
     model=model,
     args=training_args,
     train_dataset=train_dataset,
-    data_collator=data_collator
+    data_collator=data_collator,
+    callbacks=[ConsoleLoggingCallback()]  # Adding the console logging callback
 )
 
 # Step 8: Train the Model
