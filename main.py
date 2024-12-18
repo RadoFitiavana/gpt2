@@ -3,8 +3,6 @@ from transformers import (GPT2Tokenizer, GPT2Config, GPT2LMHeadModel, Trainer,
 import wandb
 from tqdm import tqdm  # For visual progress bar
 from huggingface_hub import login
-from google.colab import drive
-drive.mount('/content/drive')
 login(token='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')
 
 
