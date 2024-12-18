@@ -2,6 +2,7 @@ from transformers import (GPT2Tokenizer, GPT2Config, GPT2LMHeadModel, Trainer,
                           TrainingArguments, TextDataset, DataCollatorForLanguageModeling, TrainerCallback)
 import wandb
 from tqdm import tqdm  # Import tqdm for progress bars
+import torch
 
 # Initialize Weights & Biases
 wandb.init(project="gpt2-from-scratch", name="train-small-gpt2")
@@ -30,7 +31,7 @@ def load_dataset(file_path, tokenizer, block_size=128):
     return dataset
 
 train_dataset = load_dataset(train_data_path, tokenizer)
-print("DataCollator")
+
 # Step 5: Data Collator for Padding
 data_collator = DataCollatorForLanguageModeling(
     tokenizer=tokenizer,
@@ -57,7 +58,6 @@ class ProgressBarCallback(TrainerCallback):
         self.epoch_progress.close()  # Close the progress bar at the end of the epoch
         wandb.log({"epoch": state.epoch + 1, "training_loss": state.log_history[-1]["loss"]})
 
-print("Training args")
 # Step 6: Training Arguments
 training_args = TrainingArguments(
     output_dir=output_dir,
@@ -72,10 +72,12 @@ training_args = TrainingArguments(
     eval_steps=2_000,
     do_train=True,
     do_eval=False,  # Set to True if you have a validation set
-    fp16=True,  # Mixed precision training
+    fp16=True,  # Mixed precision training (use if you have a compatible GPU)
     report_to="wandb",  # Use Weights & Biases for logging
     learning_rate=5e-4,
-    warmup_steps=500
+    warmup_steps=500,
+    # Use GPU if available
+    device=torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Automatically uses GPU if available
 )
 
 # Step 7: Trainer Initialization with Custom Progress Bar Callback
@@ -87,7 +89,6 @@ trainer = Trainer(
     callbacks=[ProgressBarCallback()]  # Adding the progress bar callback
 )
 
-print("Training model ...")
 # Step 8: Train the Model
 trainer.train()
 
