@@ -30,7 +30,7 @@ def load_dataset(file_path, tokenizer, block_size=128):
     return dataset
 
 train_dataset = load_dataset(train_data_path, tokenizer)
-
+print("DataCollator")
 # Step 5: Data Collator for Padding
 data_collator = DataCollatorForLanguageModeling(
     tokenizer=tokenizer,
@@ -57,6 +57,7 @@ class ProgressBarCallback(TrainerCallback):
         self.epoch_progress.close()  # Close the progress bar at the end of the epoch
         wandb.log({"epoch": state.epoch + 1, "training_loss": state.log_history[-1]["loss"]})
 
+print("Training args")
 # Step 6: Training Arguments
 training_args = TrainingArguments(
     output_dir=output_dir,
@@ -86,6 +87,7 @@ trainer = Trainer(
     callbacks=[ProgressBarCallback()]  # Adding the progress bar callback
 )
 
+print("Training model ...")
 # Step 8: Train the Model
 trainer.train()
 
