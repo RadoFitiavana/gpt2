@@ -2,9 +2,6 @@ from transformers import (GPT2Tokenizer, GPT2Config, GPT2LMHeadModel, Trainer,
                           TrainingArguments, TextDataset, DataCollatorForLanguageModeling, TrainerCallback)
 import wandb
 from tqdm import tqdm  # For visual progress bar
-from huggingface_hub import login
-login(token='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')
-
 
 # Initialize Weights & Biases
 wandb.init(project="gpt2-from-scratch", name="train-small-gpt2", config={
