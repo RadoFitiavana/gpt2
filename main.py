@@ -1,19 +1,12 @@
-from transformers import (GPT2Tokenizer, GPT2Config, GPT2LMHeadModel, Trainer, 
-                          TrainingArguments, TextDataset, DataCollatorForLanguageModeling, TrainerCallback)
+from transformers import GPT2Tokenizer, GPT2Config, GPT2LMHeadModel, Trainer, TrainingArguments, TextDataset, DataCollatorForLanguageModeling
 import wandb
-from tqdm import tqdm  # For visual progress bar
 
 # Initialize Weights & Biases
-wandb.init(project="gpt2-from-scratch", name="train-small-gpt2", config={
-    "model": "GPT-2 Small",
-    "epochs": 3,
-    "batch_size": 4,
-    "learning_rate": 5e-4
-})
+wandb.init(project="gpt2-from-scratch", name="train-small-gpt2")
 
 # Paths to your data
-train_data_path = "/content/drive/MyDrive/rakitra.txt"  # Path to your cleaned training text file
-output_dir = "drive/MyDrive/gpt2-small-trained"  # Directory to save model checkpoints
+train_data_path = "/content/drive/MyDrive/train.txt"  # Path to your cleaned training text file
+output_dir = "./gpt2-small-trained"  # Directory to save model checkpoints
 
 # Step 1: Load GPT-2 Tokenizer
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
@@ -42,20 +35,6 @@ data_collator = DataCollatorForLanguageModeling(
     mlm=False  # Not using Masked Language Modeling
 )
 
-# Custom Callback for Epoch-Level Progress
-class EpochProgressCallback(TrainerCallback):
-    def on_epoch_begin(self, args, state, control, **kwargs):
-        print(f"\n\nStarting Epoch {state.epoch + 1}/{args.num_train_epochs}\n")
-        self.epoch_progress = tqdm(total=state.max_steps // args.num_train_epochs, desc=f"Epoch {state.epoch + 1}")
-
-    def on_step_end(self, args, state, control, **kwargs):
-        self.epoch_progress.update(1)
-
-    def on_epoch_end(self, args, state, control, **kwargs):
-        print(f"\nEpoch {state.epoch + 1} Completed\n")
-        wandb.log({"epoch": state.epoch + 1, "training_loss": state.log_history[-1]["loss"]})
-        self.epoch_progress.close()
-
 # Step 6: Training Arguments
 training_args = TrainingArguments(
     output_dir=output_dir,
@@ -76,13 +55,12 @@ training_args = TrainingArguments(
     warmup_steps=500
 )
 
-# Step 7: Trainer Initialization with Custom Callback
+# Step 7: Trainer Initialization
 trainer = Trainer(
     model=model,
     args=training_args,
     train_dataset=train_dataset,
-    data_collator=data_collator,
-    callbacks=[EpochProgressCallback()]  # Add custom progress callback
+    data_collator=data_collator
 )
 
 # Step 8: Train the Model
