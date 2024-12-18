@@ -15,7 +15,7 @@ wandb.init(project="gpt2-from-scratch", name="train-small-gpt2", config={
 })
 
 # Paths to your data
-train_data_path = "drive/MyDrive/rakitra.txt"  # Path to your cleaned training text file
+train_data_path = "/content/drive/MyDrive/rakitra.txt"  # Path to your cleaned training text file
 output_dir = "drive/MyDrive/gpt2-small-trained"  # Directory to save model checkpoints
 
 # Step 1: Load GPT-2 Tokenizer
