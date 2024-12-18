@@ -1,6 +1,7 @@
 from transformers import (GPT2Tokenizer, GPT2Config, GPT2LMHeadModel, Trainer, 
                           TrainingArguments, TextDataset, DataCollatorForLanguageModeling, TrainerCallback)
 import wandb
+from tqdm import tqdm  # Import tqdm for progress bars
 
 # Initialize Weights & Biases
 wandb.init(project="gpt2-from-scratch", name="train-small-gpt2")
@@ -36,17 +37,24 @@ data_collator = DataCollatorForLanguageModeling(
     mlm=False  # Not using Masked Language Modeling
 )
 
-# Custom Callback for Console Logs
-class ConsoleLoggingCallback(TrainerCallback):
+# Custom Callback for Console Logs and Progress Bar
+class ProgressBarCallback(TrainerCallback):
     def on_epoch_begin(self, args, state, control, **kwargs):
-        print(f"\n\nEpoch {state.epoch + 1}/{args.num_train_epochs} starting...\n")
-        
+        print(f"\n\nEpoch {state.epoch + 1}/{args.num_train_epochs} starting...")
+        self.epoch_progress = tqdm(total=state.max_steps // args.num_train_epochs, 
+                                     desc=f"Epoch {state.epoch + 1}",
+                                     position=0, 
+                                     leave=True)
+    
     def on_step_end(self, args, state, control, **kwargs):
+        # Update the progress bar every step
         if state.global_step % args.logging_steps == 0:
-            print(f"Step {state.global_step} - Loss: {state.log_history[-1]['loss']:.4f}")
+            self.epoch_progress.set_postfix(loss=state.log_history[-1]["loss"], refresh=True)
+            self.epoch_progress.update(1)
     
     def on_epoch_end(self, args, state, control, **kwargs):
-        print(f"Epoch {state.epoch + 1} completed. Saving model...\n")
+        print(f"\nEpoch {state.epoch + 1} completed. Saving model...")
+        self.epoch_progress.close()  # Close the progress bar at the end of the epoch
         wandb.log({"epoch": state.epoch + 1, "training_loss": state.log_history[-1]["loss"]})
 
 # Step 6: Training Arguments
@@ -69,13 +77,13 @@ training_args = TrainingArguments(
     warmup_steps=500
 )
 
-# Step 7: Trainer Initialization with Custom Console Logging Callback
+# Step 7: Trainer Initialization with Custom Progress Bar Callback
 trainer = Trainer(
     model=model,
     args=training_args,
     train_dataset=train_dataset,
     data_collator=data_collator,
-    callbacks=[ConsoleLoggingCallback()]  # Adding the console logging callback
+    callbacks=[ProgressBarCallback()]  # Adding the progress bar callback
 )
 
 # Step 8: Train the Model
