@@ -5,7 +5,7 @@ import wandb
 wandb.init(project="gpt2-from-scratch", name="train-small-gpt2")
 
 # Paths to your data
-train_data_path = "/content/drive/MyDrive/train.txt"  # Path to your cleaned training text file
+train_data_path = "drive/MyDrive/train.txt"  # Path to your cleaned training text file
 output_dir = "./gpt2-small-trained"  # Directory to save model checkpoints
 
 # Step 1: Load GPT-2 Tokenizer
