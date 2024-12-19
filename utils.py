@@ -66,7 +66,7 @@ class TextDataset(Dataset):
         block_size (int): The maximum sequence length.
         portion (float): Fraction of the text file to load (0 < portion <= 1).
     """
-    def __init__(self, file_path, tokenizer, block_size=512, portion=0.2):
+    def __init__(self, file_path, tokenizer, block_size=512, portion=0.1):
         assert 0 < portion <= 1, "portion must be between 0 and 1 (inclusive)."
         self.examples = []
 
