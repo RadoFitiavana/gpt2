@@ -53,18 +53,26 @@ def train_and_save_tokenizer(file_path, tokenizer_dir="tokenizer_output", vocab_
 class TextDataset(Dataset):
     """
     A PyTorch Dataset for loading and tokenizing text data.
+    Loads a portion of the dataset for memory efficiency.
 
     Args:
         file_path (str): Path to the text file containing the training data.
         tokenizer (GPT2TokenizerFast): The tokenizer to encode the data.
         block_size (int): The maximum sequence length.
+        portion (float): Fraction of the text file to load (0 < portion <= 1).
     """
-    def __init__(self, file_path, tokenizer, block_size=128):
+    def __init__(self, file_path, tokenizer, block_size=512, portion=0.25):
+        assert 0 < portion <= 1, "portion must be between 0 and 1 (inclusive)."
         self.examples = []
 
-        print("Loading and tokenizing dataset...")
+        print(f"Loading and tokenizing {portion*100}% of the dataset...")
         with open(file_path, "r", encoding="utf-8") as f:
-            text = f.read()
+            # Read only the first `portion` of the file
+            f.seek(0, os.SEEK_END)
+            file_size = f.tell()
+            f.seek(0)
+            read_size = int(file_size * portion)
+            text = f.read(read_size)
 
         # Tokenize and split the text into chunks
         tokenized_text = tokenizer(text, return_tensors="pt", truncation=False)["input_ids"][0]
