@@ -90,7 +90,7 @@ class TextDataset(Dataset):
 
 
 # Utility 3: Model Setup
-def setup_model(vocab_size, n_layer=4, n_head=12, n_embd=512):
+def setup_model(vocab_size, n_layer=4, n_head=12, n_embd=360):
     """
     Initializes a GPT-2 model with the specified vocabulary size and architecture.
 
