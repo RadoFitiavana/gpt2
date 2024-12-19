@@ -9,7 +9,7 @@ from transformers import GPT2Config, GPT2LMHeadModel, GPT2TokenizerFast
 
 
 # Utility 1: Train and Save a Tokenizer
-def train_and_save_tokenizer(file_path, tokenizer_dir="tokenizer_output", vocab_size=50257):
+def train_and_save_tokenizer(file_path, tokenizer_dir="tokenizer_output", vocab_size=10000):
     """
     Trains a Byte Pair Encoding (BPE) tokenizer on the given dataset and saves it.
 
