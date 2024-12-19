@@ -59,7 +59,7 @@ class TextDataset(Dataset):
         tokenizer (GPT2TokenizerFast): The tokenizer to encode the data.
         block_size (int): The maximum sequence length.
     """
-    def __init__(self, file_path, tokenizer, block_size=512):
+    def __init__(self, file_path, tokenizer, block_size=128):
         self.examples = []
 
         print("Loading and tokenizing dataset...")
@@ -82,7 +82,7 @@ class TextDataset(Dataset):
 
 
 # Utility 3: Model Setup
-def setup_model(vocab_size, n_layer=12, n_head=12, n_embd=768):
+def setup_model(vocab_size, n_layer=4, n_head=12, n_embd=512):
     """
     Initializes a GPT-2 model with the specified vocabulary size and architecture.
 
