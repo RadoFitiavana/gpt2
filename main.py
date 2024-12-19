@@ -10,7 +10,7 @@ wandb.init(project="gpt2-training", name="gpt2_from_scratch")
 
 # Configurations
 DATASET_PATH = "/content/drive/MyDrive/rakitra.txt"
-TOKENIZER_DIR = "tokenizer_output"
+# TOKENIZER_DIR = "tokenizer_output"
 BATCH_SIZE = 4
 BLOCK_SIZE = 128
 NUM_EPOCHS = 3
@@ -21,7 +21,7 @@ SAVE_DIR = "gpt2_model"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Step 1: Train tokenizer dynamically and get vocab size
-tokenizer, vocab_size = train_and_save_tokenizer(DATASET_PATH, tokenizer_dir=TOKENIZER_DIR)
+tokenizer, vocab_size = train_and_save_tokenizer(DATASET_PATH)
 
 # Step 2: Prepare dataset and dataloader
 train_dataset = TextDataset(DATASET_PATH, tokenizer, block_size=BLOCK_SIZE)
