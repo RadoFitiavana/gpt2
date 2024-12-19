@@ -1,122 +1,71 @@
-import torch
-from transformers import (GPT2Tokenizer, GPT2Config, GPT2LMHeadModel, Trainer, 
-                          TrainingArguments, DataCollatorForLanguageModeling)
 import wandb
-from torch.utils.data import Dataset
-from tqdm.auto import tqdm  # Import tqdm for progress bars
+import torch
+from torch.utils.data import DataLoader
+from transformers import AdamW, get_scheduler
+from tqdm import tqdm
+from utils import TextDataset, setup_model, train_and_save_tokenizer
 
-# Initialize Weights & Biases (wandb) for tracking experiments
-wandb.init(project="gpt2-from-scratch", name="train-small-gpt2")
+# Initialize Weights & Biases
+wandb.init(project="gpt2-training", name="gpt2_from_scratch")
 
-# Paths to your data
-train_data_path = "/content/drive/MyDrive/rakitra.txt"  # Path to your cleaned training text file
-output_dir = "./gpt2-small-trained"  # Directory to save model checkpoints
+# Configurations
+DATASET_PATH = "/content/drive/MyDrive/rakitra.txt"
+TOKENIZER_DIR = "tokenizer_output"
+BATCH_SIZE = 4
+BLOCK_SIZE = 128
+NUM_EPOCHS = 3
+LEARNING_RATE = 5e-5
+SAVE_DIR = "gpt2_model"
 
-# Step 1: Load GPT-2 Tokenizer
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-tokenizer.pad_token = tokenizer.eos_token  # Ensure padding token matches EOS token
+# Device configuration
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Step 2: Create Configuration for Small GPT-2
-config = GPT2Config.from_pretrained("gpt2", vocab_size=len(tokenizer))
+# Step 1: Train tokenizer dynamically and get vocab size
+tokenizer, vocab_size = train_and_save_tokenizer(DATASET_PATH, tokenizer_dir=TOKENIZER_DIR)
 
-# Step 3: Initialize GPT-2 Model
-model = GPT2LMHeadModel(config)
+# Step 2: Prepare dataset and dataloader
+train_dataset = TextDataset(DATASET_PATH, tokenizer, block_size=BLOCK_SIZE)
+train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-# Step 4: Custom Dataset Class
-class CustomTextDataset(Dataset):
-    def __init__(self, file_path, tokenizer, block_size=128):
-        """
-        Custom dataset that tokenizes the text and splits it into blocks of a given size.
-        Args:
-            file_path (str): Path to the text file.
-            tokenizer (transformers.GPT2Tokenizer): Tokenizer for converting text to tokens.
-            block_size (int): Length of text chunks (sequence length).
-        """
-        with open(file_path, 'r', encoding='utf-8') as f:
-            text = f.read()
+# Step 3: Initialize GPT-2 model
+model = setup_model(vocab_size=vocab_size)
+model.to(device)
 
-        # Tokenize the entire text and split it into blocks of `block_size`
-        self.examples = tokenizer(
-            text, 
-            truncation=True, 
-            padding=False, 
-            max_length=block_size, 
-            return_tensors="pt", 
-            add_special_tokens=True
-        )["input_ids"]  # Take only the input_ids, which are the tokenized texts.
-
-    def __len__(self):
-        return len(self.examples)
-
-    def __getitem__(self, idx):
-        return {"input_ids": self.examples[idx]}
-
-train_dataset = CustomTextDataset(train_data_path, tokenizer)
-
-# Step 5: Data Collator for Padding
-data_collator = DataCollatorForLanguageModeling(
-    tokenizer=tokenizer,
-    mlm=False  # Not using Masked Language Modeling
+# Step 4: Optimizer and Scheduler
+optimizer = AdamW(model.parameters(), lr=LEARNING_RATE)
+lr_scheduler = get_scheduler(
+    name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=len(train_dataloader) * NUM_EPOCHS
 )
 
-# Step 6: Define Progress Bar and Logging Callbacks for Tracking
-class ProgressBarCallback(Trainer.Callback):
-    def on_epoch_begin(self, args, state, control, **kwargs):
-        # Initialize the progress bar at the beginning of each epoch
-        self.epoch_progress = tqdm(total=state.max_steps // args.num_train_epochs, 
-                                     desc=f"Epoch {state.epoch + 1}",
-                                     position=0, leave=True)
+# Step 5: Training Loop
+model.train()
+for epoch in range(NUM_EPOCHS):
+    epoch_loss = 0
+    progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{NUM_EPOCHS}")
 
-    def on_step_end(self, args, state, control, **kwargs):
-        # Update progress bar at each step
-        if state.global_step % args.logging_steps == 0:
-            self.epoch_progress.set_postfix(loss=state.log_history[-1]["loss"], refresh=True)
-            self.epoch_progress.update(1)
+    for batch in progress_bar:
+        batch = batch.to(device)
+        
+        # Shift inputs for causal language modeling
+        outputs = model(input_ids=batch, labels=batch)
+        loss = outputs.loss
+        loss.backward()
+        
+        optimizer.step()
+        lr_scheduler.step()
+        optimizer.zero_grad()
+        
+        # Log loss
+        epoch_loss += loss.item()
+        wandb.log({"batch_loss": loss.item()})
 
-    def on_epoch_end(self, args, state, control, **kwargs):
-        # End progress bar and log metrics to wandb at the end of each epoch
-        self.epoch_progress.close()
-        print(f"\nEpoch {state.epoch + 1} completed. Saving model...")
-        wandb.log({"epoch": state.epoch + 1, "training_loss": state.log_history[-1]["loss"]})
+    avg_epoch_loss = epoch_loss / len(train_dataloader)
+    print(f"Epoch {epoch+1} Loss: {avg_epoch_loss:.4f}")
+    wandb.log({f"epoch_loss": avg_epoch_loss})
 
-# Step 7: Training Arguments Configuration
-training_args = TrainingArguments(
-    output_dir=output_dir,
-    overwrite_output_dir=True,
-    num_train_epochs=3,
-    per_device_train_batch_size=4,  # Adjust batch size for memory constraints
-    save_steps=10_000,
-    save_total_limit=2,  # Keep only the 2 most recent checkpoints
-    logging_dir="./logs",  # Directory for TensorBoard logs
-    logging_steps=500,
-    evaluation_strategy="steps",
-    eval_steps=2_000,
-    do_train=True,
-    do_eval=False,  # Set to True if you have a validation set
-    fp16=True,  # Mixed precision training for faster training (if supported)
-    report_to="wandb",  # Log metrics to Weights & Biases
-    learning_rate=5e-4,
-    warmup_steps=500,
-    device=torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Automatically use GPU if available
-)
+# Save model and tokenizer
+model.save_pretrained(SAVE_DIR)
+tokenizer.save_pretrained(SAVE_DIR)
+print(f"Model and tokenizer saved to {SAVE_DIR}")
 
-# Step 8: Initialize Trainer
-trainer = Trainer(
-    model=model,
-    args=training_args,
-    train_dataset=train_dataset,
-    data_collator=data_collator,
-    callbacks=[ProgressBarCallback()]  # Add progress bar callback for training feedback
-)
-
-# Step 9: Start Training
-trainer.train()
-
-# Step 10: Save the trained model
-trainer.save_model(output_dir)
-
-# Step 11: Finish Weights & Biases tracking
 wandb.finish()
-
-# Final Output
-print(f"Model training complete. Checkpoints saved at {output_dir}")
