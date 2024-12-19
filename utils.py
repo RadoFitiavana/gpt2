@@ -6,12 +6,13 @@ from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
 from tokenizers.pre_tokenizers import Whitespace
 from transformers import GPT2Config, GPT2LMHeadModel, GPT2TokenizerFast
+from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 
 
 # Utility 1: Train and Save a Tokenizer
 def train_and_save_tokenizer(file_path, tokenizer_dir="/content/drive/MyDrive", vocab_size=5000):
     """
-    Trains a Byte Pair Encoding (BPE) tokenizer on the given dataset and saves it.
+    Trains a word-level tokenizer on the given dataset and saves it.
 
     Args:
         file_path (str): Path to the text file containing the training data.
@@ -22,12 +23,16 @@ def train_and_save_tokenizer(file_path, tokenizer_dir="/content/drive/MyDrive", 
         GPT2TokenizerFast: A tokenizer compatible with GPT-2.
         int: The actual vocabulary size.
     """
-    # Initialize BPE Tokenizer
-    tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-    tokenizer.pre_tokenizer = Whitespace()
+    # Initialize WordLevel Tokenizer
+    tokenizer = Tokenizer(models.WordLevel(unk_token="[UNK]"))
+    
+    # Use Whitespace pre-tokenizer: this ensures that the tokenizer splits only by whitespace
+    tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
 
     # Define Trainer with special tokens
-    trainer = BpeTrainer(special_tokens=["[UNK]", "[PAD]", "[BOS]", "[EOS]"], vocab_size=vocab_size)
+    trainer = trainers.WordLevelTrainer(
+        special_tokens=["[UNK]", "[PAD]", "[BOS]", "[EOS]"], vocab_size=vocab_size
+    )
 
     # Train the tokenizer
     print("Training tokenizer...")
@@ -41,13 +46,13 @@ def train_and_save_tokenizer(file_path, tokenizer_dir="/content/drive/MyDrive", 
     # Wrap the tokenizer for GPT-2 compatibility
     print("Wrapping tokenizer for GPT-2 compatibility...")
     gpt2_tokenizer = GPT2TokenizerFast(tokenizer_object=tokenizer)
-    gpt2_tokenizer.pad_token = gpt2_tokenizer.eos_token
+    gpt2_tokenizer.pad_token = gpt2_tokenizer.eos_token  # Use EOS token as padding token
     gpt2_tokenizer.save_pretrained(tokenizer_dir)
 
     vocab_size = gpt2_tokenizer.vocab_size
     print(f"Tokenizer trained and saved to {tokenizer_dir}. Vocab size: {vocab_size}")
+    
     return gpt2_tokenizer, vocab_size
-
 
 # Utility 2: Custom Dataset Class
 class TextDataset(Dataset):
