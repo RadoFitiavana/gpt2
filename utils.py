@@ -10,7 +10,7 @@ from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 
 
 # Utility 1: Train and Save a Tokenizer
-def train_and_save_tokenizer(file_path, tokenizer_dir="/content/drive/MyDrive", vocab_size=5000):
+def train_and_save_tokenizer(file_path, tokenizer_dir="/content/drive/MyDrive", vocab_size=10000):
     """
     Trains a word-level tokenizer on the given dataset and saves it.
 
@@ -66,7 +66,7 @@ class TextDataset(Dataset):
         block_size (int): The maximum sequence length.
         portion (float): Fraction of the text file to load (0 < portion <= 1).
     """
-    def __init__(self, file_path, tokenizer, block_size=512, portion=0.05):
+    def __init__(self, file_path, tokenizer, block_size=512, portion=0.2):
         assert 0 < portion <= 1, "portion must be between 0 and 1 (inclusive)."
         self.examples = []
 
